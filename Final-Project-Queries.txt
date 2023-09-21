@@ -1,0 +1,62 @@
+/* Q1 Query: Create a query that lists each movie, the film category it is classified in, and the number of times it has been rented out*/
+SELECT f.title, c.name, COUNT(r.rental_id)
+FROM film f
+JOIN film_category fc ON f.film_id = fc.film_id
+JOIN category c ON fc.category_id = c.category_id
+JOIN inventory i ON i.film_id = f.film_id
+JOIN rental r ON i.inventory_id = r.inventory_id
+GROUP BY f.title, c.name
+ORDER BY c.name, f.title;
+
+
+/* Q2 Query: Can you provide a table with the movie titles and divide them into 4 levels (first_quarter, second_quarter, third_quarter, and final_quarter) based on the quartiles (25%, 50%, 75%) of the average rental duration(in the number of days) for movies across all categories?*/
+SELECT f.title, c.name, f.rental_duration,
+NTILE(4) OVER (ORDER BY f.rental_duration) AS standard_quartile
+FROM film f
+JOIN film_category fc ON f.film_id = fc.film_id
+JOIN category c ON fc.category_id = c.category_id
+WHERE c.name IN ('Animation', 'Children', 'Classic', 'Comedy', 'Family', 'Music');
+
+
+/* Q3 Query: Provide a table with the family-friendly film category, each of the quartiles, and the corresponding count of movies within each combination of film category for each corresponding rental duration category*/
+SELECT film_category, standard_quartile, COUNT(*) num_of_film
+FROM (SELECT  c.name film_category, 
+NTILE(4) OVER (ORDER BY f.rental_duration) AS standard_quartile
+FROM film f
+JOIN film_category fc ON f.film_id = fc.film_id
+JOIN category c ON fc.category_id = c.category_id
+WHERE c.name IN ('Animation', 'Children', 'Classic', 'Comedy', 'Family', 'Music')
+) t1
+GROUP BY film_category, standard_quartile
+ORDER BY film_category, standard_quartile
+
+
+
+/* Q4 Query: Write a query that returns the store ID for the store, the year and month and the number of rental orders each store has fulfilled for that month. Your table should include a column for each of the following: year, month, store ID and count of rental orders fulfilled during that month*/
+SELECT st.store_id AS Store_ID,
+       DATE_PART('month', rental_date) AS Rental_Month,
+       DATE_PART('year', rental_date) AS Rental_Year,
+       COUNT(r.rental_id) AS Count_Rentals
+FROM store st
+JOIN staff stt ON st.store_id = stt.store_id
+JOIN rental r ON stt.staff_id = r.staff_id
+GROUP BY st.store_id, DATE_PART('year', rental_date), DATE_PART('month', rental_date)
+ORDER BY Count_Rentals
+
+
+/* Q5 Query: Can you write a query to capture the customer name, month and year of payment, and total payment amount for each month by these top 10 paying customers?*/
+
+SELECT t1.month_alias, t1.full_name, pay_conutpermon, MAX(pay_amount)
+FROM
+(SELECT DATE_TRUNC('month', p.payment_date) AS month_alias, 
+CONCAT(c.first_name,c.last_name) AS full_name,
+COUNT(p.payment_id) AS pay_conutpermon,
+SUM(p.amount) AS pay_amount
+FROM payment p
+JOIN customer c
+ON p.customer_id=c.customer_id
+GROUP BY month_alias, full_name) t1
+GROUP BY t1.month_alias, t1.full_name, t1.pay_conutpermon
+ORDER BY max DESC, full_name
+
+
